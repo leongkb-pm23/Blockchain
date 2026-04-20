@@ -9,12 +9,16 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
+import { createCampaignOnChain } from '@/lib/web3/lumifilm-contract';
+import { ContractStatusCard } from '@/components/web3/ContractStatusCard';
 
 export default function CreateCampaign() {
   const navigate = useNavigate();
-  const { isConnected, connect } = useWalletStore();
+  const { isConnected, connect, isConnecting } = useWalletStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [txHash, setTxHash] = useState('');
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -22,6 +26,7 @@ export default function CreateCampaign() {
     deadline: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const todayString = new Date().toISOString().split('T')[0];
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -48,7 +53,8 @@ export default function CreateCampaign() {
       newErrors.deadline = 'Deadline is required';
     } else {
       const selectedDate = new Date(formData.deadline);
-      const today = new Date('2026-04-14');
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
       if (selectedDate <= today) {
         newErrors.deadline = 'Deadline must be in the future';
       }
@@ -60,15 +66,29 @@ export default function CreateCampaign() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError('');
 
     if (!validateForm()) return;
 
-    setIsSubmitting(true);
-
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    setIsSubmitting(false);
-    setShowSuccess(true);
+    try {
+      setIsSubmitting(true);
+      const hash = await createCampaignOnChain({
+        title: formData.title,
+        description: formData.description,
+        goalEth: formData.goal,
+        deadline: formData.deadline,
+      });
+      setTxHash(hash);
+      setShowSuccess(true);
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : 'Campaign creation failed. Please try again.',
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
 
     setTimeout(() => {
       navigate(ROUTE_PATHS.EXPLORE);
@@ -104,12 +124,13 @@ export default function CreateCampaign() {
               Please connect your wallet to create a campaign and start your filmmaking journey.
             </p>
             <Button
-              onClick={connect}
+              onClick={() => void connect()}
               size="lg"
+              disabled={isConnecting}
               className="bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
             >
               <Wallet className="w-5 h-5 mr-2" />
-              Connect Wallet (Demo)
+              {isConnecting ? 'Connecting...' : 'Connect Wallet'}
             </Button>
           </motion.div>
         </div>
@@ -137,6 +158,8 @@ export default function CreateCampaign() {
 
             <Card className="bg-card/60 backdrop-blur-md border-border/50 p-8 shadow-lg">
               <form onSubmit={handleSubmit} className="space-y-6">
+                <ContractStatusCard />
+
                 <div className="space-y-2">
                   <Label htmlFor="title" className="text-base flex items-center gap-2">
                     <Film className="w-4 h-4 text-accent" />
@@ -203,7 +226,7 @@ export default function CreateCampaign() {
                       type="date"
                       value={formData.deadline}
                       onChange={(e) => handleChange('deadline', e.target.value)}
-                      min="2026-04-15"
+                      min={todayString}
                       className="bg-background/50 border-border/50 focus:border-accent transition-colors"
                     />
                     {errors.deadline && (
@@ -211,6 +234,10 @@ export default function CreateCampaign() {
                     )}
                   </div>
                 </div>
+
+                {submitError && (
+                  <p className="text-sm text-destructive">{submitError}</p>
+                )}
 
                 <div className="pt-4">
                   <Button
@@ -270,7 +297,9 @@ export default function CreateCampaign() {
               <p className="text-muted-foreground text-lg mb-2">
                 Campaign created successfully!
               </p>
-              <p className="text-sm text-muted-foreground">(Demo)</p>
+              <p className="text-xs font-mono text-muted-foreground break-all">
+                {txHash}
+              </p>
             </motion.div>
           </motion.div>
         )}

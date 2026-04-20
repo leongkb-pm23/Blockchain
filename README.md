@@ -25,3 +25,19 @@
 # 接入后端接口
 - 当需要新增接口或者操作 supabase 时，需要先在 src/api 新增对应 api 文件，并导出对应的数据类型，可以参考 src/demo.ts 文件，如果是 supabase 还需要做好实现
 - 前端与 supabase 做实现时，都需要完全按照数据类型进行实现，尽可能避免修改定好的数据类型，如果出现修改，需要检查所有引用该类型的文件
+# Web3 Setup
+
+1. Start Ganache on `http://127.0.0.1:7545`
+2. Import one Ganache account into MetaMask
+3. Open [contracts/LumiFilmCrowdfunding.sol](./contracts/LumiFilmCrowdfunding.sol) in Remix
+4. In Remix, use `Deploy & Run Transactions -> Browser Extension`
+5. Make sure MetaMask is connected to `Ganache Local`
+6. Deploy `LumiFilmCrowdfunding`
+7. Copy `.env.example` to `.env.local`
+8. Set `VITE_LUMIFILM_CONTRACT_ADDRESS` to the deployed Remix contract address
+9. Restart the Vite dev server
+
+The React app will then:
+- connect to MetaMask instead of the old demo wallet
+- read campaigns and contribution history from the deployed contract
+- send real `createCampaign`, `contribute`, `claimFunds`, and `refund` transactions through MetaMask

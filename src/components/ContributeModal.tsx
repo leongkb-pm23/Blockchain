@@ -12,6 +12,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { contributeToCampaignOnChain } from '@/lib/web3/lumifilm-contract';
+import { ContractStatusCard } from '@/components/web3/ContractStatusCard';
 
 interface ContributeModalProps {
   campaign: Campaign;
@@ -25,6 +27,7 @@ export function ContributeModal({ campaign, open, onClose }: ContributeModalProp
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [txHash, setTxHash] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,14 +39,25 @@ export function ContributeModal({ campaign, open, onClose }: ContributeModalProp
       return;
     }
 
-    setLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setLoading(false);
-    setSuccess(true);
+    try {
+      setLoading(true);
+      const hash = await contributeToCampaignOnChain(campaign.id, amount);
+      setTxHash(hash);
+      setSuccess(true);
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : 'Contribution failed. Please try again.',
+      );
+    } finally {
+      setLoading(false);
+    }
 
     setTimeout(() => {
       setSuccess(false);
       setAmount('');
+      setTxHash('');
       onClose();
     }, 2000);
   };
@@ -53,6 +67,7 @@ export function ContributeModal({ campaign, open, onClose }: ContributeModalProp
       setAmount('');
       setError('');
       setSuccess(false);
+      setTxHash('');
       onClose();
     }
   };
@@ -106,10 +121,13 @@ export function ContributeModal({ campaign, open, onClose }: ContributeModalProp
                 <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-chart-3" />
               </motion.div>
               <p className="text-lg font-medium text-foreground mb-2">
-                Transaction successful (Demo)
+                Transaction successful
               </p>
-              <p className="text-sm text-muted-foreground">
-                Your contribution of {formatETH(parseFloat(amount))} has been recorded
+              <p className="text-sm text-muted-foreground mb-2">
+                Your contribution of {formatETH(parseFloat(amount))} has been recorded on-chain.
+              </p>
+              <p className="text-xs font-mono text-muted-foreground break-all">
+                {txHash}
               </p>
             </motion.div>
           ) : (
@@ -147,6 +165,8 @@ export function ContributeModal({ campaign, open, onClose }: ContributeModalProp
                   </motion.p>
                 )}
               </div>
+
+              <ContractStatusCard />
 
               <div className="bg-muted/30 rounded-lg p-4 space-y-2 border border-border/30">
                 <div className="flex justify-between text-sm">

@@ -5,7 +5,6 @@ import { Clock, User, Target, TrendingUp } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { ContributeModal } from '@/components/ContributeModal';
 import {
-  MOCK_CAMPAIGNS,
   formatETH,
   formatAddress,
   getDaysLeft,
@@ -17,12 +16,23 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { useLumiFilmData } from '@/hooks/use-lumifilm-data';
+import {
+  claimCampaignFundsOnChain,
+  claimCampaignRefundOnChain,
+} from '@/lib/web3/lumifilm-contract';
+import { ContractStatusCard } from '@/components/web3/ContractStatusCard';
 
 export default function CampaignDetail() {
   const { id } = useParams<{ id: string }>();
-  const campaign = MOCK_CAMPAIGNS.find((c) => c.id === id);
-  const { isConnected } = useWalletStore();
+  const { data } = useLumiFilmData();
+  const campaigns = data?.campaigns ?? [];
+  const setupMessage = data?.setupMessage;
+  const campaign = campaigns.find((c) => c.id === id);
+  const { isConnected, connect } = useWalletStore();
   const [modalOpen, setModalOpen] = useState(false);
+  const [actionError, setActionError] = useState('');
+  const [actionLoading, setActionLoading] = useState<'claim' | 'refund' | null>(null);
 
   if (!campaign) {
     return <Navigate to={ROUTE_PATHS.EXPLORE} replace />;
@@ -30,6 +40,34 @@ export default function CampaignDetail() {
 
   const progress = (campaign.current / campaign.goal) * 100;
   const daysLeft = getDaysLeft(campaign.deadline);
+
+  const handleClaimFunds = async () => {
+    try {
+      setActionError('');
+      setActionLoading('claim');
+      await claimCampaignFundsOnChain(campaign.id);
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : 'Unable to claim funds.',
+      );
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRefund = async () => {
+    try {
+      setActionError('');
+      setActionLoading('refund');
+      await claimCampaignRefundOnChain(campaign.id);
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : 'Unable to claim refund.',
+      );
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   return (
     <Layout>
@@ -84,6 +122,8 @@ export default function CampaignDetail() {
               <div className="space-y-6">
                 <Card className="p-6 bg-card/80 backdrop-blur-md border-border/50 sticky top-24">
                   <div className="space-y-6">
+                    <ContractStatusCard message={setupMessage} />
+
                     <div>
                       <div className="flex items-baseline justify-between mb-2">
                         <span className="text-3xl font-bold font-mono">
@@ -152,7 +192,7 @@ export default function CampaignDetail() {
                               Please login to continue
                             </p>
                             <Button
-                              onClick={() => useWalletStore.getState().connect()}
+                              onClick={() => void connect()}
                               variant="outline"
                               className="w-full"
                             >
@@ -166,10 +206,12 @@ export default function CampaignDetail() {
                     {campaign.status === 'successful' && (
                       <div className="pt-4 border-t border-border/50">
                         <Button
+                          onClick={() => void handleClaimFunds()}
+                          disabled={actionLoading !== null}
                           className="w-full bg-chart-3 hover:bg-chart-3/90 text-white"
                           size="lg"
                         >
-                          Claim Reward
+                          {actionLoading === 'claim' ? 'Claiming...' : 'Claim Funds'}
                         </Button>
                       </div>
                     )}
@@ -178,13 +220,19 @@ export default function CampaignDetail() {
                       <div className="pt-4 border-t border-border/50">
                         <Button
                           variant="outline"
+                          onClick={() => void handleRefund()}
+                          disabled={actionLoading !== null}
                           className="w-full border-destructive text-destructive hover:bg-destructive/10"
                           size="lg"
                         >
-                          Claim Refund
+                          {actionLoading === 'refund' ? 'Processing Refund...' : 'Claim Refund'}
                         </Button>
                       </div>
                     )}
+
+                    {actionError ? (
+                      <p className="text-sm text-destructive">{actionError}</p>
+                    ) : null}
                   </div>
                 </Card>
               </div>

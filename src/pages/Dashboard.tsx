@@ -1,19 +1,26 @@
 import { Layout } from '@/components/Layout';
-import { CampaignCard } from '@/components/CampaignCard';
-import { useWalletStore, MOCK_CAMPAIGNS, MOCK_CONTRIBUTIONS, formatETH, formatAddress, getStatusLabel, getStatusColor, type Campaign, type Contribution } from '@/lib/index';
+import {
+  useWalletStore,
+  formatAddress,
+} from '@/lib/index';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Wallet, Film, TrendingUp, Calendar } from 'lucide-react';
+import { Wallet, Film, TrendingUp, Building2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { InvestorDashboard } from '@/pages/dashboard/InvestorDashboard';
+import { CampaignDashboard } from '@/pages/dashboard/CampaignDashboard';
+import { CompanyDashboard } from '@/pages/dashboard/CompanyDashboard';
+import { useLumiFilmData } from '@/hooks/use-lumifilm-data';
+import { ContractStatusCard } from '@/components/web3/ContractStatusCard';
 
 export default function Dashboard() {
-  const { isConnected, address, connect } = useWalletStore();
-
-  const userCampaigns = MOCK_CAMPAIGNS.filter((c) => c.creator === address);
-  const userContributions = MOCK_CONTRIBUTIONS;
+  const { isConnected, address, connect, isConnecting } = useWalletStore();
+  const { data } = useLumiFilmData(address);
+  const campaigns = data?.campaigns ?? [];
+  const userCampaigns = campaigns.filter((c) => c.creator.toLowerCase() === address?.toLowerCase());
+  const userContributions = data?.contributions ?? [];
+  const activeStudioCampaigns = campaigns.filter((campaign) => campaign.status === 'active');
+  const companyProfile = data?.companyProfile;
 
   if (!isConnected) {
     return (
@@ -38,11 +45,12 @@ export default function Dashboard() {
             </p>
             <Button
               size="lg"
-              onClick={connect}
+              onClick={() => void connect()}
+              disabled={isConnecting}
               className="bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
             >
               <Wallet className="mr-2 h-5 w-5" />
-              Connect Wallet (Demo)
+              {isConnecting ? 'Connecting...' : 'Connect Wallet'}
             </Button>
           </motion.div>
         </div>
@@ -74,196 +82,44 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <Tabs defaultValue="campaigns" className="w-full">
-            <TabsList className="grid w-full max-w-md grid-cols-2 mb-8">
-              <TabsTrigger value="campaigns" className="flex items-center gap-2">
-                <Film className="w-4 h-4" />
-                My Campaigns
-              </TabsTrigger>
-              <TabsTrigger value="contributions" className="flex items-center gap-2">
+          <div className="mb-8">
+            <ContractStatusCard message={data?.setupMessage} />
+          </div>
+
+          <Tabs defaultValue="investor" className="w-full">
+            <TabsList className="grid w-full max-w-2xl grid-cols-3 mb-8">
+              <TabsTrigger value="investor" className="flex items-center gap-2">
                 <TrendingUp className="w-4 h-4" />
-                My Contributions
+                Investor
+              </TabsTrigger>
+              <TabsTrigger value="campaign" className="flex items-center gap-2">
+                <Film className="w-4 h-4" />
+                Campaign
+              </TabsTrigger>
+              <TabsTrigger value="company" className="flex items-center gap-2">
+                <Building2 className="w-4 h-4" />
+                Company
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="campaigns">
-              {userCampaigns.length === 0 ? (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.4 }}
-                >
-                  <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
-                    <CardContent className="flex flex-col items-center justify-center py-16">
-                      <div className="w-20 h-20 rounded-full bg-muted/30 flex items-center justify-center mb-6">
-                        <Film className="w-10 h-10 text-muted-foreground" />
-                      </div>
-                      <h3 className="text-2xl font-semibold mb-2">No Campaigns Yet</h3>
-                      <p className="text-muted-foreground text-center max-w-md mb-6">
-                        You haven't created any campaigns yet. Start your filmmaking journey by launching your first campaign.
-                      </p>
-                      <Button
-                        onClick={() => (window.location.hash = '/create')}
-                        className="bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
-                      >
-                        Create Campaign
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ) : (
-                <div className="space-y-6">
-                  {userCampaigns.map((campaign, index) => (
-                    <motion.div
-                      key={campaign.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.4, delay: index * 0.1 }}
-                    >
-                      <Card className="border-border/50 bg-card/50 backdrop-blur-sm hover:border-primary/50 transition-colors">
-                        <CardContent className="p-6">
-                          <div className="flex flex-col md:flex-row gap-6">
-                            <div className="w-full md:w-48 h-32 rounded-lg overflow-hidden flex-shrink-0">
-                              <img
-                                src={campaign.image}
-                                alt={campaign.title}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                            <div className="flex-1 space-y-4">
-                              <div className="flex items-start justify-between gap-4">
-                                <div>
-                                  <h3 className="text-2xl font-semibold mb-2">{campaign.title}</h3>
-                                  <p className="text-muted-foreground line-clamp-2">
-                                    {campaign.shortDescription}
-                                  </p>
-                                </div>
-                                <Badge className={getStatusColor(campaign.status)}>
-                                  {getStatusLabel(campaign.status)}
-                                </Badge>
-                              </div>
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between text-sm">
-                                  <span className="text-muted-foreground">Funding Progress</span>
-                                  <span className="font-mono font-semibold">
-                                    {formatETH(campaign.current)} / {formatETH(campaign.goal)}
-                                  </span>
-                                </div>
-                                <Progress
-                                  value={(campaign.current / campaign.goal) * 100}
-                                  className="h-2"
-                                />
-                                <div className="flex items-center justify-between text-sm text-muted-foreground">
-                                  <span>{Math.round((campaign.current / campaign.goal) * 100)}% funded</span>
-                                  <span className="flex items-center gap-1">
-                                    <Calendar className="w-3 h-3" />
-                                    {new Date(campaign.deadline).toLocaleDateString('en-US', {
-                                      month: 'short',
-                                      day: 'numeric',
-                                      year: 'numeric',
-                                    })}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="flex gap-3">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => (window.location.hash = `/campaign/${campaign.id}`)}
-                                >
-                                  View Details
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
+            <TabsContent value="investor">
+              <InvestorDashboard
+                campaigns={campaigns}
+                contributions={userContributions}
+              />
             </TabsContent>
 
-            <TabsContent value="contributions">
-              {userContributions.length === 0 ? (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.4 }}
-                >
-                  <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
-                    <CardContent className="flex flex-col items-center justify-center py-16">
-                      <div className="w-20 h-20 rounded-full bg-muted/30 flex items-center justify-center mb-6">
-                        <TrendingUp className="w-10 h-10 text-muted-foreground" />
-                      </div>
-                      <h3 className="text-2xl font-semibold mb-2">No Contributions Yet</h3>
-                      <p className="text-muted-foreground text-center max-w-md mb-6">
-                        You haven't supported any campaigns yet. Explore campaigns and help bring creative visions to life.
-                      </p>
-                      <Button
-                        onClick={() => (window.location.hash = '/explore')}
-                        className="bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
-                      >
-                        Explore Campaigns
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ) : (
-                <div className="space-y-4">
-                  {userContributions.map((contribution, index) => {
-                    const campaign = MOCK_CAMPAIGNS.find((c) => c.id === contribution.campaignId);
-                    return (
-                      <motion.div
-                        key={contribution.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4, delay: index * 0.1 }}
-                      >
-                        <Card className="border-border/50 bg-card/50 backdrop-blur-sm hover:border-primary/50 transition-colors">
-                          <CardContent className="p-6">
-                            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                              <div className="flex-1">
-                                <h3 className="text-xl font-semibold mb-2">{contribution.campaignTitle}</h3>
-                                <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                                  <span className="flex items-center gap-1">
-                                    <Calendar className="w-4 h-4" />
-                                    {new Date(contribution.date).toLocaleDateString('en-US', {
-                                      month: 'long',
-                                      day: 'numeric',
-                                      year: 'numeric',
-                                    })}
-                                  </span>
-                                  {campaign && (
-                                    <Badge className={getStatusColor(campaign.status)}>
-                                      {getStatusLabel(campaign.status)}
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-4">
-                                <div className="text-right">
-                                  <p className="text-sm text-muted-foreground mb-1">Contributed</p>
-                                  <p className="text-2xl font-bold font-mono bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                                    {formatETH(contribution.amount)}
-                                  </p>
-                                </div>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => (window.location.hash = `/campaign/${contribution.campaignId}`)}
-                                >
-                                  View Campaign
-                                </Button>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              )}
+            <TabsContent value="campaign">
+              <CampaignDashboard campaigns={userCampaigns} />
+            </TabsContent>
+
+            <TabsContent value="company">
+              {companyProfile ? (
+                <CompanyDashboard
+                  companyProfile={companyProfile}
+                  activeCampaigns={activeStudioCampaigns}
+                />
+              ) : null}
             </TabsContent>
           </Tabs>
         </motion.div>

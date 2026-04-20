@@ -3,18 +3,21 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Filter } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { CampaignCard } from '@/components/CampaignCard';
-import { MOCK_CAMPAIGNS, type CampaignStatus } from '@/lib/index';
+import { type CampaignStatus } from '@/lib/index';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { useLumiFilmData } from '@/hooks/use-lumifilm-data';
+import { ContractStatusCard } from '@/components/web3/ContractStatusCard';
 
 type FilterType = 'all' | CampaignStatus;
 
 export default function Explore() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const { data } = useLumiFilmData();
 
   const filteredCampaigns = useMemo(() => {
-    let filtered = MOCK_CAMPAIGNS;
+    let filtered = data?.campaigns ?? [];
 
     if (searchQuery.trim()) {
       filtered = filtered.filter((campaign) =>
@@ -27,7 +30,7 @@ export default function Explore() {
     }
 
     return filtered;
-  }, [searchQuery, activeFilter]);
+  }, [searchQuery, activeFilter, data?.campaigns]);
 
   const filterButtons: { label: string; value: FilterType }[] = [
     { label: 'All', value: 'all' },
@@ -60,6 +63,8 @@ export default function Explore() {
             transition={{ duration: 0.5, delay: 0.1 }}
             className="mb-8 space-y-6"
           >
+            <ContractStatusCard message={data?.setupMessage} />
+
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input

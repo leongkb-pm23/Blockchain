@@ -1,5 +1,5 @@
-import { create } from 'zustand';
 import { IMAGES } from '@/assets/images';
+export { useWalletStore } from '@/lib/web3/wallet-store';
 
 export const ROUTE_PATHS = {
   HOME: '/',
@@ -32,10 +32,25 @@ export interface Contribution {
   date: string;
 }
 
+export interface CompanyProfile {
+  name: string;
+  founded: string;
+  headquarters: string;
+  wallet: string;
+  treasuryETH: number;
+  monthlyBurnETH: number;
+  teamSize: number;
+}
+
 export interface WalletState {
+  hasProvider: boolean;
   isConnected: boolean;
+  isConnecting: boolean;
   address: string | null;
-  connect: () => void;
+  chainId?: number | null;
+  balance?: string | null;
+  error?: string | null;
+  connect: () => Promise<void>;
   disconnect: () => void;
 }
 
@@ -150,6 +165,16 @@ export const MOCK_CONTRIBUTIONS: Contribution[] = [
   },
 ];
 
+export const MOCK_COMPANY_PROFILE: CompanyProfile = {
+  name: 'LumiFilm Studios',
+  founded: '2024-09-01',
+  headquarters: 'Kuala Lumpur, MY',
+  wallet: '0xCF9A3E2D7B1H5K8L',
+  treasuryETH: 350.45,
+  monthlyBurnETH: 28.2,
+  teamSize: 18,
+};
+
 export const formatETH = (amount: number): string => {
   return `${amount.toFixed(2)} ETH`;
 };
@@ -160,7 +185,7 @@ export const formatAddress = (address: string): string => {
 };
 
 export const getDaysLeft = (deadline: string): number => {
-  const now = new Date('2026-04-14');
+  const now = new Date();
   const end = new Date(deadline);
   const diff = end.getTime() - now.getTime();
   const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
@@ -192,10 +217,3 @@ export const getStatusLabel = (status: CampaignStatus): string => {
       return 'Unknown';
   }
 };
-
-export const useWalletStore = create<WalletState>((set) => ({
-  isConnected: false,
-  address: null,
-  connect: () => set({ isConnected: true, address: '0xA3F7B92K4E8D1C5F' }),
-  disconnect: () => set({ isConnected: false, address: null }),
-}));
