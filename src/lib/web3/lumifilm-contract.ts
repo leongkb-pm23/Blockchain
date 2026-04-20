@@ -29,8 +29,59 @@ const IMAGE_ROTATION = [
 
 const CONTRACT_ADDRESS = import.meta.env.VITE_LUMIFILM_CONTRACT_ADDRESS ?? "";
 
+type WalletLikeError = {
+  code?: number | string;
+  message?: string;
+  shortMessage?: string;
+  reason?: string;
+  error?: {
+    code?: number | string;
+    message?: string;
+  };
+  info?: {
+    error?: {
+      code?: number | string;
+      message?: string;
+    };
+  };
+};
+
 export function getConfiguredContractAddress() {
   return CONTRACT_ADDRESS;
+}
+
+export function getReadableWeb3Error(error: unknown, fallback: string) {
+  const walletError = error as WalletLikeError | null;
+  const errorCode =
+    walletError?.code ??
+    walletError?.error?.code ??
+    walletError?.info?.error?.code;
+  const errorMessage =
+    walletError?.shortMessage ??
+    walletError?.reason ??
+    walletError?.message ??
+    walletError?.error?.message ??
+    walletError?.info?.error?.message;
+  const normalizedDetails = JSON.stringify(error).toLowerCase();
+  const normalizedMessage = errorMessage?.toLowerCase() ?? "";
+
+  if (
+    errorCode === 4001 ||
+    errorCode === "ACTION_REJECTED" ||
+    errorCode === "USER_REJECTED" ||
+    normalizedMessage.includes("user rejected") ||
+    normalizedMessage.includes("user denied") ||
+    normalizedMessage.includes("rejected the request") ||
+    normalizedMessage.includes("rejected action") ||
+    normalizedDetails.includes("\"code\":4001") ||
+    normalizedDetails.includes("action_rejected") ||
+    normalizedDetails.includes("user denied transaction signature") ||
+    normalizedDetails.includes("ethers-user-denied")
+  ) {
+    return "Transaction cancelled in MetaMask.";
+  }
+
+  return errorMessage ?? fallback;
 }
 
 export function isLumiFilmContractConfigured() {

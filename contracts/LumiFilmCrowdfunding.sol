@@ -2,6 +2,9 @@
 pragma solidity ^0.8.20;
 
 contract LumiFilmCrowdfunding {
+    uint256 public constant TITLE_WORD_LIMIT = 12;
+    uint256 public constant DESCRIPTION_WORD_LIMIT = 120;
+
     struct Campaign {
         uint256 id;
         address creator;
@@ -51,6 +54,11 @@ contract LumiFilmCrowdfunding {
     ) external returns (uint256) {
         require(bytes(title).length > 0, "Title required");
         require(bytes(description).length > 0, "Description required");
+        require(_countWords(title) <= TITLE_WORD_LIMIT, "Title too long");
+        require(
+            _countWords(description) <= DESCRIPTION_WORD_LIMIT,
+            "Description too long"
+        );
         require(goal > 0, "Goal must be greater than zero");
         require(deadline > block.timestamp, "Deadline must be in the future");
 
@@ -125,5 +133,22 @@ contract LumiFilmCrowdfunding {
         require(success, "Refund failed");
 
         emit RefundClaimed(campaignId, msg.sender, amount);
+    }
+
+    function _countWords(string calldata text) private pure returns (uint256 count) {
+        bytes calldata data = bytes(text);
+        bool inWord = false;
+
+        for (uint256 i = 0; i < data.length; i++) {
+            bytes1 char = data[i];
+            bool isWhitespace = char == 0x20 || char == 0x09 || char == 0x0A || char == 0x0D;
+
+            if (isWhitespace) {
+                inWord = false;
+            } else if (!inWord) {
+                count += 1;
+                inWord = true;
+            }
+        }
     }
 }

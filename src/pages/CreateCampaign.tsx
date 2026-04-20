@@ -9,8 +9,24 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
-import { createCampaignOnChain } from '@/lib/web3/lumifilm-contract';
+import {
+  createCampaignOnChain,
+  getReadableWeb3Error,
+} from '@/lib/web3/lumifilm-contract';
 import { ContractStatusCard } from '@/components/web3/ContractStatusCard';
+
+const TITLE_WORD_LIMIT = 12;
+const DESCRIPTION_WORD_LIMIT = 120;
+
+function countWords(value: string) {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return 0;
+  }
+
+  return trimmed.split(/\s+/).length;
+}
 
 export default function CreateCampaign() {
   const navigate = useNavigate();
@@ -27,6 +43,8 @@ export default function CreateCampaign() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const todayString = new Date().toISOString().split('T')[0];
+  const titleWordCount = countWords(formData.title);
+  const descriptionWordCount = countWords(formData.description);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -35,12 +53,16 @@ export default function CreateCampaign() {
       newErrors.title = 'Campaign title is required';
     } else if (formData.title.length < 5) {
       newErrors.title = 'Title must be at least 5 characters';
+    } else if (titleWordCount > TITLE_WORD_LIMIT) {
+      newErrors.title = `Title must be ${TITLE_WORD_LIMIT} words or fewer`;
     }
 
     if (!formData.description.trim()) {
       newErrors.description = 'Description is required';
     } else if (formData.description.length < 50) {
       newErrors.description = 'Description must be at least 50 characters';
+    } else if (descriptionWordCount > DESCRIPTION_WORD_LIMIT) {
+      newErrors.description = `Description must be ${DESCRIPTION_WORD_LIMIT} words or fewer`;
     }
 
     if (!formData.goal) {
@@ -80,19 +102,14 @@ export default function CreateCampaign() {
       });
       setTxHash(hash);
       setShowSuccess(true);
+      setTimeout(() => {
+        navigate(ROUTE_PATHS.EXPLORE);
+      }, 3000);
     } catch (error) {
-      setSubmitError(
-        error instanceof Error
-          ? error.message
-          : 'Campaign creation failed. Please try again.',
-      );
+      setSubmitError(getReadableWeb3Error(error, 'Campaign creation failed. Please try again.'));
     } finally {
       setIsSubmitting(false);
     }
-
-    setTimeout(() => {
-      navigate(ROUTE_PATHS.EXPLORE);
-    }, 3000);
   };
 
   const handleChange = (field: string, value: string) => {
@@ -172,6 +189,9 @@ export default function CreateCampaign() {
                     placeholder="Enter your film title"
                     className="bg-background/50 border-border/50 focus:border-accent transition-colors"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    {titleWordCount}/{TITLE_WORD_LIMIT} words
+                  </p>
                   {errors.title && (
                     <p className="text-destructive text-sm mt-1">{errors.title}</p>
                   )}
@@ -190,6 +210,9 @@ export default function CreateCampaign() {
                     rows={6}
                     className="bg-background/50 border-border/50 focus:border-accent transition-colors resize-none"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    {descriptionWordCount}/{DESCRIPTION_WORD_LIMIT} words
+                  </p>
                   {errors.description && (
                     <p className="text-destructive text-sm mt-1">{errors.description}</p>
                   )}

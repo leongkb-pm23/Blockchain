@@ -12,7 +12,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { contributeToCampaignOnChain } from '@/lib/web3/lumifilm-contract';
+import {
+  contributeToCampaignOnChain,
+  getReadableWeb3Error,
+} from '@/lib/web3/lumifilm-contract';
 import { ContractStatusCard } from '@/components/web3/ContractStatusCard';
 
 interface ContributeModalProps {
@@ -45,11 +48,7 @@ export function ContributeModal({ campaign, open, onClose }: ContributeModalProp
       setTxHash(hash);
       setSuccess(true);
     } catch (submitError) {
-      setError(
-        submitError instanceof Error
-          ? submitError.message
-          : 'Contribution failed. Please try again.',
-      );
+      setError(getReadableWeb3Error(submitError, 'Contribution failed. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -74,12 +73,12 @@ export function ContributeModal({ campaign, open, onClose }: ContributeModalProp
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-md border-border/50">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto bg-card/95 backdrop-blur-md border-border/50">
         <DialogHeader>
           <DialogTitle className="text-2xl font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
             Contribute to Campaign
           </DialogTitle>
-          <DialogDescription className="text-muted-foreground">
+          <DialogDescription className="text-muted-foreground break-words">
             {campaign.title}
           </DialogDescription>
         </DialogHeader>
